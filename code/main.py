@@ -49,8 +49,13 @@ class Game:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
-                    with open(join('data', 'score.txt'), 'w') as score_file:
-                        json.dump(self.score, score_file)
+                    try:
+                        import os
+                        os.makedirs('data', exist_ok=True)
+                        with open(join('data', 'score.txt'), 'w') as score_file:
+                            json.dump(self.score, score_file)
+                    except Exception:
+                        pass
             
             # update 
             self.all_sprites.update(dt)

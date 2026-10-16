@@ -49,21 +49,33 @@ jobs:
 
       - name: Build with PyInstaller
         run: |
-          if [ -f main.py ]; then ENTRY="main.py"; else ENTRY=$(ls *.py | head -n 1); fi
-          pyinstaller --clean --noconfirm --onefile $ENTRY
+          if [ -f main.py ]; then
+            ENTRY="main.py"
+          elif [ -f code/main.py ]; then
+            ENTRY="code/main.py"
+          else
+            ENTRY=$(find . -maxdepth 2 -name "*.py" | head -n 1)
+          fi
+          pyinstaller --clean --noconfirm --onefile --name "Pong-2.0" $ENTRY
         shell: bash
 
       - name: Archive Windows executable
         if: runner.os == 'Windows'
-        run: Compress-Archive -Path dist/*.exe -DestinationPath build-windows.zip
+        run: |
+          if (Test-Path "data") { Copy-Item -Path "data" -Destination "dist/data" -Recurse -Force }
+          Compress-Archive -Path dist/* -DestinationPath build-windows.zip
 
       - name: Archive Linux executable
         if: runner.os == 'Linux'
-        run: tar -czf build-linux.tar.gz -C dist .
+        run: |
+          if [ -d "data" ]; then cp -r data dist/; fi
+          tar -czf build-linux.tar.gz -C dist .
 
       - name: Archive macOS application
         if: runner.os == 'macOS'
-        run: zip -r build-macos.zip dist/*
+        run: |
+          if [ -d "data" ]; then cp -r data dist/; fi
+          zip -r build-macos.zip dist/*
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -95,9 +107,13 @@ jobs:
             artifacts/build-macOS/build-macos.zip
 
       - name: Setup Butler
+        if: env.BUTLER_API_KEY != ''
         uses: remarkablegames/setup-butler@v1
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
 
       - name: Publish Windows to itch.io via Butler
+        if: env.BUTLER_API_KEY != ''
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
         run: |
@@ -106,6 +122,7 @@ jobs:
           butler push push_win ShivamKR12/pong-2.0:windows --userversion desktop-v1.0.${{ github.run_number }}
 
       - name: Publish Linux to itch.io via Butler
+        if: env.BUTLER_API_KEY != ''
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
         run: |
@@ -114,6 +131,7 @@ jobs:
           butler push push_linux ShivamKR12/pong-2.0:linux --userversion desktop-v1.0.${{ github.run_number }}
 
       - name: Publish macOS to itch.io via Butler
+        if: env.BUTLER_API_KEY != ''
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
         run: |
